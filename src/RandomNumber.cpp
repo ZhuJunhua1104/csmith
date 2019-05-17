@@ -1,6 +1,6 @@
 // -*- mode: C++ -*-
 //
-// Copyright (c) 2007, 2008, 2009, 2010, 2011 The University of Utah
+// Copyright (c) 2007, 2008, 2009, 2010, 2011, 2017 The University of Utah
 // All rights reserved.
 //
 // This file is part of `csmith', a random generator of C programs.
@@ -26,6 +26,10 @@
 // CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
+
+#if HAVE_CONFIG_H
+#  include <config.h>
+#endif
 
 #include "RandomNumber.h"
 
@@ -170,9 +174,7 @@ RandomNumber::doFinalization()
 	for (unsigned int i = 0; i < count; ++i) {
 		RNDNUM_GENERATOR rImpl = static_cast<RNDNUM_GENERATOR>(i);
 		generator = instance_->generators_[rImpl];
-		if (generator != NULL) {
-			delete generator;
-		}
+		delete generator;
 	}
 	delete instance_;
 }

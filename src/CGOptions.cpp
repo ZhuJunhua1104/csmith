@@ -1,6 +1,6 @@
 // -*- mode: C++ -*-
 //
-// Copyright (c) 2008, 2010, 2011, 2012, 2013, 2014 The University of Utah
+// Copyright (c) 2008, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017 The University of Utah
 // All rights reserved.
 //
 // This file is part of `csmith', a random generator of C programs.
@@ -29,23 +29,25 @@
 
 ///////////////////////////////////////////////////////////////////////////////
 
+#if HAVE_CONFIG_H
+#  include <config.h>
+#endif
+
 #include "CGOptions.h"
 #include <iostream>
-#include <assert.h>
-#include <string.h>
+#include <cassert>
+#include <cstring>
 #include <map>
 #include "Fact.h"
 #include "DefaultOutputMgr.h"
 #include "Bookkeeper.h"
 #include "CompatibleChecker.h"
 #include "PartialExpander.h"
-#include "DeltaMonitor.h"
 #include "Probabilities.h"
 #include "OutputMgr.h"
 #include "StringUtils.h"
 
 using namespace std;
-Reducer* CGOptions::reducer_ = NULL;
 vector<int> CGOptions::safe_math_wrapper_ids_;
 map<string, bool> CGOptions::enabled_builtin_kinds_;
 int CGOptions::int_size_ = 0;
@@ -110,9 +112,7 @@ DEFINE_GETTER_SETTER_BOOL(dfs_exhaustive)
 DEFINE_GETTER_SETTER_STRING_REF(dfs_debug_sequence)
 DEFINE_GETTER_SETTER_INT (max_exhaustive_depth)
 DEFINE_GETTER_SETTER_BOOL(compact_output)
-DEFINE_GETTER_SETTER_BOOL(msp)
 DEFINE_GETTER_SETTER_INT(func1_max_params)
-DEFINE_GETTER_SETTER_BOOL(splat)
 DEFINE_GETTER_SETTER_BOOL(klee)
 DEFINE_GETTER_SETTER_BOOL(crest)
 DEFINE_GETTER_SETTER_BOOL(ccomp)
@@ -136,6 +136,7 @@ DEFINE_GETTER_SETTER_BOOL(longlong)
 DEFINE_GETTER_SETTER_BOOL(int8)
 DEFINE_GETTER_SETTER_BOOL(uint8)
 DEFINE_GETTER_SETTER_BOOL(enable_float)
+DEFINE_GETTER_SETTER_BOOL(strict_float)
 DEFINE_GETTER_SETTER_BOOL(pointers)
 DEFINE_GETTER_SETTER_BOOL(arrays)
 DEFINE_GETTER_SETTER_BOOL(strict_const_arrays)
@@ -147,6 +148,7 @@ DEFINE_GETTER_SETTER_BOOL(arg_unions)
 DEFINE_GETTER_SETTER_BOOL(volatiles)
 DEFINE_GETTER_SETTER_BOOL(volatile_pointers)
 DEFINE_GETTER_SETTER_BOOL(const_pointers)
+DEFINE_GETTER_SETTER_BOOL(global_variables)
 DEFINE_GETTER_SETTER_BOOL(access_once)
 DEFINE_GETTER_SETTER_BOOL(strict_volatile_rule)
 DEFINE_GETTER_SETTER_BOOL(addr_taken_of_locals)
@@ -159,7 +161,6 @@ DEFINE_GETTER_SETTER_BOOL(muls)
 DEFINE_GETTER_SETTER_BOOL(accept_argc)
 DEFINE_GETTER_SETTER_BOOL(random_random)
 DEFINE_GETTER_SETTER_INT(stop_by_stmt)
-DEFINE_GETTER_SETTER_BOOL(deputy)
 DEFINE_GETTER_SETTER_BOOL(step_hash_by_stmt)
 DEFINE_GETTER_SETTER_BOOL(compound_assignment)
 DEFINE_GETTER_SETTER_STRING_REF(dump_default_probabilities)
@@ -190,7 +191,10 @@ DEFINE_GETTER_SETTER_BOOL(use_embedded_assigns);
 DEFINE_GETTER_SETTER_BOOL(use_comma_exprs);
 DEFINE_GETTER_SETTER_BOOL(take_union_field_addr);
 DEFINE_GETTER_SETTER_BOOL(vol_struct_union_fields);
+DEFINE_GETTER_SETTER_BOOL(const_struct_union_fields);
 DEFINE_GETTER_SETTER_BOOL(lang_cpp);
+DEFINE_GETTER_SETTER_BOOL(cpp11);
+DEFINE_GETTER_SETTER_BOOL(fast_execution);
 
 void
 CGOptions::set_default_builtin_kinds()
@@ -232,9 +236,7 @@ CGOptions::set_default_settings(void)
 	use_struct(true);
 	use_union(true);
 	compact_output(false);
-	msp(false);
 	func1_max_params(CGOPTIONS_DEFAULT_FUNC1_MAX_PARAMS);
-	splat(false);
 	klee(false);
 	crest(false);
 	ccomp(false);
@@ -253,6 +255,7 @@ CGOptions::set_default_settings(void)
 	int8(true);
 	uint8(true);
 	enable_float(false);
+	strict_float(false);
 	pointers(true);
 	arrays(true);
 	strict_const_arrays(false);
@@ -264,13 +267,13 @@ CGOptions::set_default_settings(void)
 	volatiles(true);
 	volatile_pointers(true);
 	const_pointers(true);
+	global_variables(true);
 	consts(true);
 	dangling_global_ptrs(true);
 	divs(true);
 	muls(true);
 	accept_argc(true);
 	stop_by_stmt(-1);
-	deputy(false);
 	step_hash_by_stmt(false);
 	const_as_condition(false);
 	match_exact_qualifiers(false);
@@ -297,10 +300,22 @@ CGOptions::set_default_settings(void)
 	use_comma_exprs(true);
 	take_union_field_addr(true);
 	vol_struct_union_fields(true);
+	const_struct_union_fields(true);
 	addr_taken_of_locals(true);
 	lang_cpp(false);
+	cpp11(false);
+  fast_execution(false);
 
 	set_default_builtin_kinds();
+}
+
+// Add options necessary for cpp 
+void
+CGOptions::fix_options_for_cpp(void)
+{
+	match_exact_qualifiers(true);
+    vol_struct_union_fields(false);		// makes implementation of volatile structs easier
+    const_struct_union_fields(false);	// restriction of current implementation; TODO
 }
 
 /*
@@ -430,7 +445,7 @@ bool CGOptions::resolve_exhaustive_options()
 	}
 
 	if (CGOptions::has_extension_support()) {
-		conflict_msg_ = "exhaustive mode doesn't support splat|klee|crest|coverage-test extension";
+		conflict_msg_ = "exhaustive mode doesn't support klee|crest|coverage-test extension";
 		return true;
 	}
 	// For effeciency reason, we fix the size of struct fields
@@ -455,9 +470,6 @@ bool
 CGOptions::has_extension_conflict()
 {
 	int count = 0;
-
-	if (CGOptions::splat())
-		count++;
 	if (CGOptions::klee())
 		count++;
 	if (CGOptions::crest())
@@ -466,7 +478,7 @@ CGOptions::has_extension_conflict()
 		count++;
 
 	if (count > 1) {
-		conflict_msg_ = "You could only specify --splat or --klee or --crest or --coverage-test";
+		conflict_msg_ = "You could only specify --klee or --crest or --coverage-test";
 		return true;
 	}
 	return false;
@@ -475,7 +487,7 @@ CGOptions::has_extension_conflict()
 bool
 CGOptions::has_extension_support()
 {
-	return (CGOptions::splat() || CGOptions::klee()
+	return (CGOptions::klee()
 		|| CGOptions::crest() || CGOptions::coverage_test());
 }
 
@@ -538,21 +550,9 @@ CGOptions::has_conflict(void)
 		}
 	}
 
-	if (!CGOptions::delta_monitor().empty()) {
-		string msg;
-		if (!DeltaMonitor::init(msg, CGOptions::delta_monitor(), CGOptions::delta_output())) {
-			conflict_msg_ = msg;
-			return true;
-		}
-	}
-
-	if (!CGOptions::go_delta().empty()) {
-		string msg;
-		if (!DeltaMonitor::init_for_running(msg, CGOptions::go_delta(), CGOptions::delta_output(),
-				CGOptions::delta_input(), CGOptions::no_delta_reduction())) {
-			conflict_msg_ = msg;
-			return true;
-		}
+	if (!CGOptions::lang_cpp() && CGOptions::cpp11()) {
+		conflict_msg_ = "--cpp11 option makes sense only with --lang-cpp option enabled.";
+		return true;
 	}
 
 #if 0

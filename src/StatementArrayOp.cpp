@@ -1,6 +1,6 @@
 // -*- mode: C++ -*-
 //
-// Copyright (c) 2007, 2008, 2009, 2010, 2011, 2013, 2014 The University of Utah
+// Copyright (c) 2007, 2008, 2009, 2010, 2011, 2013, 2014, 2015, 2016, 2017 The University of Utah
 // All rights reserved.
 //
 // This file is part of `csmith', a random generator of C programs.
@@ -27,31 +27,32 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 
+#if HAVE_CONFIG_H
+#  include <config.h>
+#endif
+
 #include "StatementArrayOp.h"
 #include <cassert>
+
 #include "Common.h"
-#include "Block.h"
 #include "CGContext.h"
 #include "CGOptions.h"
-#include "Constant.h"
-#include "ExpressionFuncall.h"
-#include "ExpressionVariable.h"
-#include "Function.h"
-#include "FunctionInvocation.h"
-#include "FunctionInvocationBinary.h"
-#include "VariableSelector.h"
-#include "FactMgr.h"
-#include "Lhs.h"
-#include "SafeOpFlags.h"
-#include "Error.h"
-#include "PartialExpander.h"
-#include "Bookkeeper.h"
-#include "DepthSpec.h"
-#include "StatementBreak.h"
-#include "StatementFor.h"
-#include "CFGEdge.h"
+
 #include "ArrayVariable.h"
+#include "Block.h"
+#include "CFGEdge.h"
+#include "Effect.h"
+#include "Error.h"
+#include "Expression.h"
+#include "FactMgr.h"
+#include "Function.h"
+#include "Lhs.h"
+#include "StatementFor.h"
+#include "Type.h"
+#include "Variable.h"
+#include "VariableSelector.h"
 #include "random.h"
+#include "util.h"
 
 using namespace std;
 
@@ -133,7 +134,8 @@ StatementArrayOp::make_random_array_init(CGContext &cg_context)
 		} while (true);
 		invalid_vars.push_back(cv);
 		cvs.push_back(cv);
-		assert(cg_context.read_indices(cv, fm->global_facts));
+		bool read = cg_context.read_indices(cv, fm->global_facts);
+		assert(read);
 		cg_context.write_var(cv);
 		// put in induction variable list so that later indices have no write-write conflict
 		cg_context.iv_bounds[cv] = av->get_sizes()[i];

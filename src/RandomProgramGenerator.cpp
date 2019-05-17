@@ -1,6 +1,6 @@
 // -*- mode: C++ -*-
 //
-// Copyright (c) 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 The University of Utah
+// Copyright (c) 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018 The University of Utah
 // All rights reserved.
 //
 // This file is part of `csmith', a random generator of C programs.
@@ -74,6 +74,11 @@ FUTURE:
 	- Work from leaves to root
 	- If node uses pointer or array, it is potential heap store allocated.
 */
+
+#if HAVE_CONFIG_H
+#  include <config.h>
+#endif
+
 #ifdef WIN32
 #pragma warning(disable : 4786)   /* Disable annoying warning messages */
 #endif
@@ -88,6 +93,7 @@ FUTURE:
 #include "CGOptions.h"
 #include "AbsProgramGenerator.h"
 
+#include "git_version.h"
 #include "platform.h"
 #include "random.h"
 
@@ -108,9 +114,7 @@ static void
 print_version(void)
 {
 	cout << PACKAGE_STRING << endl;
-#ifdef GIT_VERSION
-	cout << "Git version: " << GIT_VERSION << endl;
-#endif
+	cout << "Git version: " << git_version << endl;
 	// XXX print copyright, contact info, etc.?
 }
 
@@ -147,7 +151,7 @@ static void print_help()
 	cout << "  --output <filename> or -o <filename>: specify the output file name." << endl << endl;
 
 	// enabling/disabling options
-	cout << "  --argc | --no-argc: genereate main function with/without argv and argc being passed (enabled by default)." << endl << endl;
+	cout << "  --argc | --no-argc: generate main function with/without argv and argc being passed (enabled by default)." << endl << endl;
 	cout << "  --arrays | --no-arrays: enable | disable arrays (enabled by default)." << endl << endl;
 	cout << "  --bitfields | --no-bitfields: enable | disable full-bitfields structs (enabled by default)." << endl << endl;
 	cout << "  --checksum | --no-checksum: enable | disable checksum calculation (enabled by default)." << endl << endl;
@@ -194,6 +198,7 @@ static void print_help()
 	cout << "  --volatiles | --no-volatiles: enable | disable volatiles (enabled by default)." << endl << endl;
 	cout << "  --volatile-pointers | --no-volatile-pointers: enable | disable volatile pointers (enabled by default)." << endl << endl;
 	cout << "  --const-pointers | --no-const-pointers: enable | disable const pointers (enabled by default)." << endl << endl;
+	cout << "  --global-variables | --no-global-variables: enable | disable global variables (enabled by default)." << endl << endl;
 
 	cout << "  --builtins | --no-builtins: enable | disable to generate builtin functions (disabled by default)." << endl << endl;
 	cout << "  --enable-builtin-kinds k1,k2 | --disable-builtin-kinds k1,k2: enable | disable certain kinds of builtin functions." << endl << endl;
@@ -201,6 +206,7 @@ static void print_help()
 
         // language options
 	cout << "  --lang-cpp : generate C++ code (C by default)." << endl << endl;
+	cout << "  --cpp11 : generate C++11 code (C++03 by default). Works if lang-cpp is enabled." << endl << endl;
 
 }
 
@@ -236,11 +242,9 @@ static void print_advanced_help()
 	cout << "Only works in the exhaustive mode." << endl << endl;
 
 	// target platforms
-	cout << "  --msp: enable certain msp related features " << endl << endl;
 	cout << "  --ccomp: generate compcert-compatible code" << endl << endl;
 
 	// symblic excutions
-	cout << "  --splat: enable splat extension" << endl << endl;
 	cout << "  --klee: enable klee extension" << endl << endl;
 	cout << "  --crest: enable crest extension" << endl << endl;
 
@@ -250,7 +254,7 @@ static void print_advanced_help()
 	cout << "Can only be used with --coverage-test." << endl << endl;
 
 	cout << "  --func1_max_params <num>: specify the number of symbolic variables passed to func_1 (default 3). ";
-	cout << "Only used when --splat | --crest | --klee | --coverage-test is enabled." << endl << endl;
+	cout << "Only used when --crest | --klee | --coverage-test is enabled." << endl << endl;
 
 	// struct/union related options
 	cout << "  --fixed-struct-fields: fix the size of struct fields to max-struct-fields (default 10)." << endl << endl;
@@ -260,6 +264,7 @@ static void print_advanced_help()
 	cout << "  --arg-unions | --no-arg-unions: enable | disable unions being used as args (enabled by default)." << endl << endl;
 	cout << "  --take-union-field-addr | --take-no-union-field-addr: allow | disallow addresses of union fields to be taken (allowed by default)." << endl << endl;
 	cout << "  --vol-struct-union-fields | --no-vol-struct-union-fields: enable | disable volatile struct/union fields (enabled by default)" << endl << endl;
+	cout << "  --const-struct-union-fields | --no-const-struct-union-fields: enable | disable const struct/union fields (enabled by default)" << endl << endl;
 
 	// delta related options
 	cout << "  --delta-monitor [simple]: specify the type of delta monitor. Only [simple] type is supported now." << endl << endl;
@@ -329,6 +334,7 @@ static void print_advanced_help()
 	cout << "  --max-struct-nested-level: controls the max depth of nested structs (default is 3)." << endl << endl;
 	cout << "  --no-hash-value-printf: do not emit printf on the index of an array" << endl << endl;
 	cout << "  --no-signed-char-index: do not allow a var of type char to be used as array index" << endl << endl;
+	cout << "  --strict-float: do not allow assignments between floats and integers" << endl << endl;
 }
 
 void arg_check(int argc, int i)
@@ -406,11 +412,6 @@ main(int argc, char **argv)
 			continue;
 		}
 
-		if (strcmp (argv[i], "--splat") == 0) {
-			CGOptions::splat(true);
-			continue;
-		}
-
 		if (strcmp (argv[i], "--klee") == 0) {
 			CGOptions::klee(true);
 			continue;
@@ -471,11 +472,6 @@ main(int argc, char **argv)
 
 		if (strcmp (argv[i], "--compact-output") == 0) {
 			CGOptions::compact_output(true);
-			continue;
-		}
-
-		if (strcmp (argv[i], "--msp") == 0) {
-			CGOptions::msp(true);
 			continue;
 		}
 
@@ -787,6 +783,11 @@ main(int argc, char **argv)
 			continue;
 		}
 
+		if (strcmp (argv[i], "--strict-float") == 0) {
+			CGOptions::strict_float(true);
+			continue;
+		}
+
 		if (strcmp (argv[i], "--pointers") == 0) {
 			CGOptions::pointers(true);
 			continue;
@@ -912,6 +913,16 @@ main(int argc, char **argv)
 			continue;
 		}
 
+		if (strcmp (argv[i], "--global-variabless") == 0) {
+			CGOptions::global_variables(true);
+			continue;
+		}
+
+		if (strcmp (argv[i], "--no-global-variables") == 0) {
+			CGOptions::global_variables(false);
+			continue;
+		}
+
 		if (strcmp (argv[i], "--enable-access-once") == 0) {
 			CGOptions::access_once(true);
 			continue;
@@ -1031,11 +1042,6 @@ main(int argc, char **argv)
 				exit(-1);
 			}
 			CGOptions::monitored_funcs(vname);
-			continue;
-		}
-
-		if (strcmp (argv[i], "--deputy") == 0) {
-			CGOptions::deputy(true);
 			continue;
 		}
 
@@ -1355,6 +1361,16 @@ main(int argc, char **argv)
 			continue;
 		}
 
+		if (strcmp(argv[i], "--const-struct-union-fields") == 0) {
+			CGOptions::const_struct_union_fields(true);
+			continue;
+		}
+
+		if (strcmp(argv[i], "--no-const-struct-union-fields") == 0) {
+			CGOptions::const_struct_union_fields(false);
+			continue;
+		}
+
 		if (strcmp (argv[i], "--no-hash-value-printf") == 0) {
 			CGOptions::hash_value_printf(false);
 			continue;
@@ -1370,22 +1386,19 @@ main(int argc, char **argv)
 			continue;
 		}
 
-		if (strcmp (argv[i], "--reduce") == 0) {
-			string filename;
-			i++;
-			arg_check(argc, i);
-			if (!parse_string_arg(argv[i], filename)) {
-				cout<< "please specify reduction directive file!" << std::endl;
-				exit(-1);
-			}
-			ifstream conf(filename.c_str());
-			if (conf.fail()) {
-				cout<< "can't read reduction directive file " << filename << "!" << std::endl;
-				exit(-1);
-			}
-			CGOptions::init_reducer(filename);
+		if (strcmp(argv[i], "--cpp11") == 0) {
+			CGOptions::cpp11(true);
 			continue;
 		}
+
+    if (strcmp(argv[i], "--fast-execution") == 0) {
+      CGOptions::lang_cpp(true);
+      // jumps can easily cause infinite loops. Just disable them
+      CGOptions::jumps(false);
+      // large arrays are also reported to cause slow execution
+      CGOptions::max_array_length_per_dimension(5);
+      continue;
+    }
 		// OMIT help
 
 		// OMIT compute-hash
@@ -1407,6 +1420,10 @@ main(int argc, char **argv)
 			 << i
 			 << endl;
 		exit(-1);
+	}
+
+	if (CGOptions::lang_cpp()) {
+		CGOptions::fix_options_for_cpp();
 	}
 
 	if (CGOptions::has_conflict()) {

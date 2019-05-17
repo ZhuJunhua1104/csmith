@@ -1,6 +1,6 @@
 ## -*- mode: Makefile-Automake -*-
 ##
-## Copyright (c) 2011, 2012 The University of Utah
+## Copyright (c) 2011, 2012, 2017 The University of Utah
 ## All rights reserved.
 ##
 ## This file is part of `csmith', a random generator of C programs.
@@ -32,8 +32,10 @@
 dist_bin_SCRIPTS = \
 	compiler_test.in \
 	compiler_test.pl \
-	launchn.pl \
-	test_csmith.pl
+	launchn.pl
+
+EXTRA_DIST = \
+	CMakeLists.txt
 
 ###############################################################################
 

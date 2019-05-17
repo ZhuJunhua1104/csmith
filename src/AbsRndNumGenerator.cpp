@@ -1,6 +1,6 @@
 // -*- mode: C++ -*-
 //
-// Copyright (c) 2007, 2008, 2009, 2010, 2011 The University of Utah
+// Copyright (c) 2007, 2008, 2009, 2010, 2011, 2015, 2017 The University of Utah
 // All rights reserved.
 //
 // This file is part of `csmith', a random generator of C programs.
@@ -27,6 +27,10 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 
+#if HAVE_CONFIG_H
+#  include <config.h>
+#endif
+
 #include "AbsRndNumGenerator.h"
 
 #include <cassert>
@@ -35,11 +39,10 @@
 
 #include "DefaultRndNumGenerator.h"
 #include "DFSRndNumGenerator.h"
-#include "SimpleDeltaRndNumGenerator.h"
 
 using namespace std;
 
-#ifdef WIN32
+#ifndef HAVE_LRAND48
 extern "C" {
 	extern void srand48(long seed);
 	extern long lrand48(void);
@@ -76,9 +79,6 @@ AbsRndNumGenerator::make_rndnum_generator(RNDNUM_GENERATOR impl, const unsigned 
 		case rDFSRndNumGenerator:
 			rImpl = DFSRndNumGenerator::make_rndnum_generator();
 			break;
-		case rSimpleDeltaRndNumGenerator:
-			rImpl = SimpleDeltaRndNumGenerator::make_rndnum_generator(seed);
-			break;
 		default:
 			assert(!"unknown random generator");
 			break;
@@ -90,7 +90,13 @@ AbsRndNumGenerator::make_rndnum_generator(RNDNUM_GENERATOR impl, const unsigned 
 void
 AbsRndNumGenerator::seedrand(const unsigned long seed )
 {
-	srand48 (seed);
+#ifdef HAVE_SRAND48_DETERMINISTIC
+	// OpenBSD requires a special call to activate the standard,
+	// deterministic behavior of `lrand48'.
+	srand48_deterministic(seed);
+#else
+	srand48(seed);
+#endif
 }
 
 /*

@@ -1,6 +1,6 @@
 // -*- mode: C++ -*-
 //
-// Copyright (c) 2007, 2008, 2009, 2010, 2011 The University of Utah
+// Copyright (c) 2007, 2008, 2009, 2010, 2011, 2015 The University of Utah
 // All rights reserved.
 //
 // This file is part of `csmith', a random generator of C programs.
@@ -91,14 +91,14 @@ enum dType {
 
 #define DEPTH_GUARD_BY_DEPTH_RETURN_DEL1(d, t1, rv) \
 	if (DepthSpec::depth_guard_by_depth(d) != GOOD_DEPTH) { \
-		if (t1) delete t1; \
+		delete t1; \
 		return rv; \
 	}
 
 #define DEPTH_GUARD_BY_DEPTH_RETURN_DEL2(d, t1, t2, rv) \
 	if (DepthSpec::depth_guard_by_depth(d) != GOOD_DEPTH) { \
-		if (t1) delete t1; \
-		if (t2) delete t2; \
+		delete t1; \
+		delete t2; \
 		return rv; \
 	}
 

@@ -23,7 +23,7 @@ my $xxtra = "";
 #my $notmp = "-DUSE_MATH_MACROS_NOTMP";
 my $notmp = "";
 
-my $COMPILER_TIMEOUT = 30;
+my $COMPILER_TIMEOUT = 300;
 
 my $COMPILER_TIMEOUT_RES = 137;
 
@@ -43,17 +43,20 @@ my $LOCKFN = "/var/tmp/version_search_lockfile";
 ####################################################################
 
 my @gcc_opts = (
-    "-w -O0 -march=core-avx2 -mtune=core-avx2",
-    "-w -O1 -march=core-avx2 -mtune=core-avx2",
-    "-w -Og -march=core-avx2 -mtune=core-avx2",
-    "-w -Os -march=core-avx2 -mtune=core-avx2",
-    "-w -O2 -march=core-avx2 -mtune=core-avx2",
-    "-w -O3 -march=core-avx2 -mtune=core-avx2",
-    # "-w -Ofast -march=core-avx2 -mtune=core-avx2",
+    "-w -O0 -march=native -mtune=native",
+    "-w -O1 -march=native -mtune=native",
+    "-w -Os -march=native -mtune=native",
+    "-w -O2 -march=native -mtune=native",
+    "-w -O3 -march=native -mtune=native",
     );
 
 my @clang_opts = (
-    "-O -w",
+    "-O0 -w",
+    "-O1 -w",
+    "-O2 -w",
+    "-Os -w",
+    "-O3 -w",
+    #"-O3 -w -Xclang -load -Xclang /home/regehr/llvm-test-lvi/build/LLVMTestLVI.so",
     );
 
 my @o0only = (
@@ -65,6 +68,18 @@ my @occomp = ("-fall");
 
 my @gcc = ("gcc",
            "gcc",
+           \@gcc_opts);
+
+my @gcc47 = ("gcc47",
+           "gcc-4.7",
+           \@gcc_opts);
+
+my @gcc46 = ("gcc46",
+           "gcc-4.6",
+           \@gcc_opts);
+
+my @gcc44 = ("gcc44",
+           "gcc-4.4",
            \@gcc_opts);
 
 my $SOUPER = "/home/regehr/f/souper-regehr";
@@ -88,7 +103,7 @@ my @clang_souper = ("clang",
                     \@sclang_opts);
 
 my @clang = ("clang",
-	     "$SOUPER/third_party/llvm/Release/bin/clang",
+	     "clang",
 	     \@clang_opts);
 
 my @souper_bare = ("clang",
@@ -198,7 +213,12 @@ my @clang33 = ("clang33",
 my @compilers_to_test = (
 
     \@clang,
-    \@souper_bare,
+    #\@gcc,
+
+    #\@gcc47,
+    #\@gcc46,
+    #\@gcc44,
+    #\@souper_bare,
 
     #\@gcccurrent,
     #\@ccomp,
@@ -368,7 +388,7 @@ sub reduce_program ($$$$$$$) {
             ) {
             $err = $1;
 	} else {
-	    print "FAILURE to reduce: no ICE message\n";
+	    print "reduction didn't work: no ICE message\n";
 	    return;
 	}
 	if ($err =~ /killed/i) {

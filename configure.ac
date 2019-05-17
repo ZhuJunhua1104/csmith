@@ -1,6 +1,6 @@
 ## -*- mode: Autoconf -*-
 ##
-## Copyright (c) 2008, 2010, 2011 The University of Utah
+## Copyright (c) 2008, 2010, 2011, 2017, 2018 The University of Utah
 ## All rights reserved.
 ##
 ## This file is part of `csmith', a random generator of C programs.
@@ -34,14 +34,17 @@ AC_INIT(csmith, CSMITH_VERSION, CSMITH_BUGREPORT, csmith, CSMITH_URL)
 
 AC_CONFIG_SRCDIR(src/RandomProgramGenerator.cpp)
 AC_CONFIG_AUX_DIR(autoconf)
-dnl AM_CONFIG_HEADER(config.h)
+AC_CONFIG_MACRO_DIR(m4)
+AC_CONFIG_HEADERS(config.h)
 
-AC_CANONICAL_TARGET
+AC_CANONICAL_HOST
 
 # `-Wno-portability': avoid warnings about using `:=' in `Makefile.am' files.
 AM_INIT_AUTOMAKE([-Wall -Wno-portability])
 
 AM_MAINTAINER_MODE
+
+LT_INIT
 
 # Avoid configure-time warnings about `--datarootdir' being ignored.
 # This can perhaps be removed in a few years after Autoconf 2.60.
@@ -52,18 +55,33 @@ AC_DEFUN([AC_DATAROOTDIR_CHECKED])
 dnl AC_PROG_CC # Automake 1.11 want us to use AM_PROG_CC_C_O instead...
 AM_PROG_CC_C_O
 AC_PROG_CXX
-AC_PROG_RANLIB
-AC_PROG_LIBTOOL
 
-dnl AX_BOOST_BASE()
-dnl AX_BOOST_PROGRAM_OPTIONS
+# `arc4random' and friends are available on BSD in the standard C library, and
+# on Linux in `libbsd'.  We use `arc4random_buf' if it is available, but we do
+# not require it.
+#
+AC_SEARCH_LIBS([arc4random_buf], [bsd])
+AC_CHECK_HEADERS([bsd/stdlib.h])
+AC_CHECK_FUNCS([arc4random_buf])
+
+# Csmith uses `lrand48', and we provide an implementation for platforms that
+# do not have it (in particular, Windows).
+#
+have_lrand48="no"
+AC_CHECK_FUNCS([lrand48], [have_lrand48="yes"], [have_lrand48="no"])
+AM_CONDITIONAL([HAVE_LRAND48], [test "$have_lrand48" = "yes"])
+
+# OpenBSD requires a special call to activate the standard, deterministic
+# behavior of `lrand48'.
+#
+AC_CHECK_FUNCS([srand48_deterministic])
 
 # If we're using g++, set the default `CXXFLAGS' to something more pedantic.
 #
 if test "$ac_test_CXXFLAGS" = set; then
   # The user specified `CXXFLAGS', so do nothing.
   CXXFLAGS="$CXXFLAGS"
-elif test "$GXX" = yes; then 
+elif test "$GXX" = yes; then
   CXXFLAGS="-g -O3 -Wall -Wextra -Wno-long-long"
 fi
 

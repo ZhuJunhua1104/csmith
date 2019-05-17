@@ -1,6 +1,6 @@
 // -*- mode: C++ -*-
 //
-// Copyright (c) 2007, 2008, 2009, 2010, 2011, 2013, 2014 The University of Utah
+// Copyright (c) 2007, 2008, 2009, 2010, 2011, 2013, 2014, 2015, 2016, 2017 The University of Utah
 // All rights reserved.
 //
 // This file is part of `csmith', a random generator of C programs.
@@ -26,6 +26,10 @@
 // CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
+
+#if HAVE_CONFIG_H
+#  include <config.h>
+#endif
 
 #include "Constant.h"
 #include <cassert>
@@ -527,18 +531,23 @@ Constant::get_type(void) const
 void
 Constant::Output(std::ostream &out) const
 {
-	output_cast(out);
 	//enclose negative numbers in parenthesis to avoid syntax errors such as "--8"
 	if (!value.empty() && value[0] == '-') {
-		out << "(" << value << ")";
+        output_cast(out);
+        out << "(" << value << ")";
 	} else if (type->eType == ePointer && equals(0)){
+        // don't output cast for NULL:
 		if (CGOptions::lang_cpp()) {
-			out << "NULL";
+			if (CGOptions::cpp11())
+				out << "nullptr";
+			else
+				out << "NULL";
 		} else {
-		out << "(void*)" << value;
+			out << "(void*)" << value;
 		}
 	} else {
-		out << value;
+        output_cast(out);
+        out << value;
 	}
 }
 

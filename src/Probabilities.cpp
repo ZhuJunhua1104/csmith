@@ -1,6 +1,6 @@
 // -*- mode: C++ -*-
 //
-// Copyright (c) 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 The University of Utah
+// Copyright (c) 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017 The University of Utah
 // All rights reserved.
 //
 // This file is part of `csmith', a random generator of C programs.
@@ -27,6 +27,10 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 
+#if HAVE_CONFIG_H
+#  include <config.h>
+#endif
+
 #include "Probabilities.h"
 #include <cassert>
 #include <fstream>
@@ -41,7 +45,6 @@
 #include "Type.h"
 #include "SafeOpFlags.h"
 #include "CGOptions.h"
-#include "MspFilters.h"
 #include "VectorFilter.h"
 #include "random.h"
 
@@ -188,9 +191,7 @@ GroupProbElem::~GroupProbElem()
 {
 	std::map<ProbName, SingleProbElem*>::iterator i;
 	for (i = probs_.begin(); i != probs_.end(); ++i) {
-		SingleProbElem *elem = (*i).second;
-		assert(elem);
-		delete elem;
+		delete i->second;
 	}
 	probs_.clear();
 }
@@ -377,10 +378,8 @@ Probabilities::GetInstance()
 void
 Probabilities::DestroyInstance()
 {
-	if (Probabilities::instance_) {
-		delete Probabilities::instance_;
-		Probabilities::instance_ = NULL;
-	}
+	delete instance_;
+	instance_ = NULL;
 }
 
 void
@@ -560,12 +559,14 @@ Probabilities::initialize_single_probs()
 	else
 		m[pLooserConstProb] = 0;
 
-	if (CGOptions::volatiles() && CGOptions::vol_struct_union_fields())
+	if (CGOptions::volatiles() &&
+	    CGOptions::vol_struct_union_fields() &&
+	    CGOptions::global_variables())
 		m[pFieldVolatileProb] = 30;
 	else
 		m[pFieldVolatileProb] = 0;
 
-	if (CGOptions::consts())
+	if (CGOptions::consts() && CGOptions::const_struct_union_fields())
 		m[pFieldConstProb] = 20;
 	else
 		m[pFieldConstProb] = 0;
@@ -857,15 +858,6 @@ Probabilities::unregister_extra_filter(ProbName pname, Filter *filter)
 void
 Probabilities::set_extra_filters(ProbName pname)
 {
-	if (CGOptions::msp()) {
-		switch(pname) {
-		case pBinaryOpsProb:
-			extra_filters_[pname] = new MspBinaryFilter();
-			break;
-		default:
-			break;
-		}
-	}
 }
 
 bool
@@ -873,7 +865,7 @@ Probabilities::check_extra_filter(ProbName pname, int v)
 {
 	assert(v >= 0);
 	std::map<ProbName, Filter*>::iterator i = extra_filters_.find(pname);
-	if (i != extra_filters_.end())
+	if (i != extra_filters_.end() && ((*i).second != NULL))
 		return (*i).second->filter(v);
 	else
 		return false;
@@ -1064,27 +1056,27 @@ void
 Probabilities::dump_default_probabilities(const string &fname)
 {
 	assert(!fname.empty());
-	ofstream *out = new ofstream(fname.c_str());
-	std::map<ProbName, ProbElem*>::iterator i;
+	ofstream out(fname.c_str());
+
+	std::map<ProbName, ProbElem*>::iterator i; 
 	for (i = probabilities_.begin(); i != probabilities_.end(); ++i) {
-		(*i).second->dump_default(*out);
-		*out << std::endl << std::endl;
+		(*i).second->dump_default(out);
+		out << std::endl << std::endl;
 	}
-	out->close();
 }
 
 void
 Probabilities::dump_actual_probabilities(const string &fname, unsigned long seed)
 {
 	assert(!fname.empty());
-	ofstream *out = new ofstream(fname.c_str());
-	*out << "# Seed: " << seed << std::endl << std::endl;
+	ofstream out(fname.c_str());
+	out << "# Seed: " << seed << std::endl << std::endl;
+
 	std::map<ProbName, ProbElem*>::iterator i;
 	for (i = probabilities_.begin(); i != probabilities_.end(); ++i) {
-		(*i).second->dump_val(*out);
-		*out << std::endl << std::endl;
+		(*i).second->dump_val(out);
+		out << std::endl << std::endl;
 	}
-	out->close();
 }
 
 //////////////////////////////////////////////////////////////////////

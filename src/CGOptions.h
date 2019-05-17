@@ -1,6 +1,6 @@
 // -*- mode: C++ -*-
 //
-// Copyright (c) 2008, 2009, 2010, 2011, 2012, 2013, 2014 The University of Utah
+// Copyright (c) 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017 The University of Utah
 // All rights reserved.
 //
 // This file is part of `csmith', a random generator of C programs.
@@ -33,7 +33,6 @@
 #include <string>
 #include <vector>
 #include <map>
-#include "Reducer.h"
 using namespace std;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -53,7 +52,7 @@ using namespace std;
 #define CGOPTIONS_DEFAULT_MAX_STRUCT_FIELDS	(10)
 #define CGOPTIONS_DEFAULT_MAX_UNION_FIELDS	(5)
 #define CGOPTIONS_DEFAULT_MAX_NESTED_STRUCT_LEVEL	(3)
-#define CGOPTIONS_DEFAULT_MAX_INDIRECT_LEVEL (2)
+#define CGOPTIONS_DEFAULT_MAX_INDIRECT_LEVEL (5)
 #define CGOPTIONS_DEFAULT_MAX_ARRAY_DIMENSIONS	(3)
 #define CGOPTIONS_DEFAULT_MAX_ARRAY_LENGTH_PER_DIMENSION (10)
 #define CGOPTIONS_DEFAULT_MAX_ARRAY_LENGTH	(256)
@@ -178,14 +177,8 @@ public:
 	static bool compact_output(void);
 	static bool compact_output(bool p);
 
-	static bool msp(void);
-	static bool msp(bool p);
-
 	static int func1_max_params(void);
 	static int func1_max_params(int p);
-
-	static bool splat(void);
-	static bool splat(bool p);
 
 	static bool klee(void);
 	static bool klee(bool p);
@@ -256,6 +249,9 @@ public:
 	static bool enable_float(void);
 	static bool enable_float(bool p);
 
+	static bool strict_float(void);
+	static bool strict_float(bool p);
+
 	static bool pointers(void);
 	static bool pointers(bool p);
 
@@ -288,6 +284,9 @@ public:
 
 	static bool const_pointers(void);
 	static bool const_pointers(bool p);
+
+	static bool global_variables(void);
+	static bool global_variables(bool p);
 
 	static std::string vol_tests_mach(void);
 	static bool set_vol_tests(const std::string &s);
@@ -345,9 +344,6 @@ public:
 
 	static void monitored_funcs(string fnames);
 
-	static bool deputy(void);
-	static bool deputy(bool p);
-
 	static bool const_as_condition(void);
 	static bool const_as_condition(bool p);
 
@@ -378,9 +374,6 @@ public:
 
 	static int max_array_num_in_loop();
 	static int max_array_num_in_loop(int p);
-
-	static void init_reducer(std::string fname) { reducer_ = new Reducer(fname);}
-	static Reducer* get_reducer(void) { return reducer_; }
 
 	static bool x86_64();
 
@@ -441,6 +434,9 @@ public:
 	static bool vol_struct_union_fields(void);
 	static bool vol_struct_union_fields(bool p);
 
+	static bool const_struct_union_fields(void);
+	static bool const_struct_union_fields(bool p);
+
 	static int int_size(void);
 	static void int_size(int p) { int_size_ = p;}
 
@@ -452,9 +448,17 @@ public:
 	static bool lang_cpp(void);
 	static bool lang_cpp(bool p);
 
+	static bool cpp11(void);
+	static bool cpp11(bool p);
+
 	static void enable_builtin_kinds(const string &kinds);
 	static void disable_builtin_kinds(const string &kinds);
 	static bool enabled_builtin(const string &ks);
+
+	static void fix_options_for_cpp(void);
+
+  static bool fast_execution(void);
+  static bool fast_execution(bool p);
 
 private:
 	static bool enabled_builtin_kind(const string &kind);
@@ -502,7 +506,6 @@ private:
 	static bool nomain_;
 	static bool compound_assignment_;
 	static int stop_by_stmt_;
-	static bool deputy_;
 	static bool step_hash_by_stmt_;
 	static bool blind_check_global_;
 	static bool	random_based_;
@@ -510,9 +513,7 @@ private:
 	static std::string dfs_debug_sequence_;
 	static int	max_exhaustive_depth_;
 	static bool	compact_output_;
-	static bool	msp_;
 	static int	func1_max_params_;
-	static bool	splat_;
 	static bool	klee_;
 	static bool	crest_;
 	static bool	ccomp_;
@@ -536,6 +537,7 @@ private:
 	static bool	int8_;
 	static bool	uint8_;
 	static bool	enable_float_;
+	static bool	strict_float_;
 	static bool	pointers_;
 	static bool	arrays_;
 	static bool	strict_const_arrays_;
@@ -547,6 +549,7 @@ private:
 	static bool	volatiles_;
 	static bool	volatile_pointers_;
 	static bool	const_pointers_;
+	static bool	global_variables_;
 	static std::string	vol_tests_mach_;
 	static bool	access_once_;
 	static bool	strict_volatile_rule_;
@@ -594,10 +597,12 @@ private:
 	static int  pointer_size_;
 	static bool take_union_field_addr_;
 	static bool vol_struct_union_fields_;
-	static Reducer* reducer_;
+	static bool const_struct_union_fields_;
+  static bool fast_execution_;
 
 	// flag to indicate language
 	static bool lang_cpp_;
+	static bool cpp11_;
 private:
 	CGOptions(void);
 	CGOptions(CGOptions &cgo);

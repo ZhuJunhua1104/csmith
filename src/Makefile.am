@@ -1,6 +1,6 @@
 ## -*- mode: Makefile-Automake -*-
 ##
-## Copyright (c) 2008-2012 The University of Utah
+## Copyright (c) 2008-2017 The University of Utah
 ## All rights reserved.
 ##
 ## This file is part of `csmith', a random generator of C programs.
@@ -29,7 +29,26 @@
 
 ###############################################################################
 
+# For source files in `rand48/'.
+AUTOMAKE_OPTIONS = subdir-objects
+
 bin_PROGRAMS = csmith
+
+GIT_HASH := $(shell "$(top_srcdir)/git-hash.sh" "$(top_srcdir)" || echo error)
+DUMMY1 := $(shell echo "$(GIT_HASH)" > git_version.txt.tmp)
+DUMMY2 := $(shell cmp -s git_version.txt.tmp git_version.txt || \
+		  cp git_version.txt.tmp git_version.txt)
+DUMMY3 := $(shell rm -f git_version.txt.tmp)
+
+git_version_edit = sed \
+	-e 's|@GIT_HASH[@]|$(GIT_HASH)|g'
+
+git_version.cpp: git_version.cpp.in git_version.txt
+	rm -f $@ $@.tmp
+	srcdir=''; \
+	  test -f ./$@.in || srcdir=$(srcdir)/; \
+	  $(git_version_edit) $${srcdir}$@.in > $@.tmp
+	mv $@.tmp $@
 
 # XXX --- yuck!
 csmith_SOURCES = \
@@ -75,8 +94,6 @@ csmith_SOURCES = \
 	DefaultProgramGenerator.h \
 	DefaultRndNumGenerator.cpp \
 	DefaultRndNumGenerator.h \
-	DeltaMonitor.cpp \
-	DeltaMonitor.h \
 	DepthSpec.cpp \
 	DepthSpec.h \
 	Effect.cpp \
@@ -126,8 +143,6 @@ csmith_SOURCES = \
 	Lhs.h \
 	LinearSequence.cpp \
 	LinearSequence.h \
-	MspFilters.cpp \
-	MspFilters.h \
 	OutputMgr.cpp \
 	OutputMgr.h \
 	PartialExpander.cpp \
@@ -138,10 +153,6 @@ csmith_SOURCES = \
 	RandomNumber.cpp \
 	RandomNumber.h \
 	RandomProgramGenerator.cpp \
-	Reducer.cpp \
-	Reducer.h \
-	ReducerOutputMgr.cpp \
-	ReducerOutputMgr.h \
 	SafeOpFlags.cpp \
 	SafeOpFlags.h \
 	Sequence.cpp \
@@ -149,12 +160,6 @@ csmith_SOURCES = \
 	SequenceFactory.cpp \
 	SequenceFactory.h \
 	SequenceLineParser.h \
-	SimpleDeltaRndNumGenerator.cpp \
-	SimpleDeltaRndNumGenerator.h \
-	SimpleDeltaSequence.cpp \
-	SimpleDeltaSequence.h \
-	SplatExtension.cpp \
-	SplatExtension.h \
 	Statement.cpp \
 	Statement.h \
 	StatementArrayOp.cpp \
@@ -185,6 +190,7 @@ csmith_SOURCES = \
 	VariableSelector.h \
 	VectorFilter.cpp \
 	VectorFilter.h \
+	git_version.h \
 	platform.cpp \
 	platform.h \
 	random.cpp \
@@ -192,26 +198,32 @@ csmith_SOURCES = \
 	util.cpp \
 	util.h
 
-# Include VC project files in the distribution.
+nodist_csmith_SOURCES = \
+	git_version.cpp
+
+# Windows lacks `lrand48', so we provide an implementation.
+if HAVE_LRAND48
+else
+csmith_SOURCES += \
+	rand48/_rand48.c \
+	rand48/lrand48.c \
+	rand48/rand48.h \
+	rand48/srand48.c
+endif
+
 EXTRA_DIST = \
-	csmith.vcproj \
-	csmith.vcxproj
+	CMakeLists.txt \
+	git_version.cpp.in
 
-GIT_HASH := $(shell "$(top_srcdir)/git-hash.sh" "$(top_srcdir)" || echo error)
-GIT_FLAG = -DGIT_VERSION=\"$(GIT_HASH)\"
+# csmith_CPPFLAGS =
+# csmith_LDFLAGS  =
+# csmith_LDADD    =
 
-## ENE: The idea of stuffing the target CPU name (a string) into a CPP symbol
-## is kind of awful.  What we should do instead is use the name to modify the
-## include path, e.g., -I"$(target_cpu)".  But that refactoring is for a later
-## day...
-
-csmith_CPPFLAGS = \
-	-DTARGET_CPU_$(target_cpu)=1 \
-	$(GIT_FLAG) \
-	$(BOOST_CPPFLAGS)
-
-csmith_LDFLAGS = $(BOOST_LDFLAGS)
-csmith_LDADD   = $(BOOST_PROGRAM_OPTIONS_LIB)
+CLEANFILES = \
+	git_version.txt \
+	git_version.txt.tmp \
+	git_version.cpp \
+	git_version.cpp.tmp
 
 ###############################################################################
 

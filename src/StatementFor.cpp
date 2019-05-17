@@ -1,6 +1,6 @@
 // -*- mode: C++ -*-
 //
-// Copyright (c) 2007, 2008, 2010, 2011, 2013, 2014 The University of Utah
+// Copyright (c) 2007, 2008, 2010, 2011, 2013, 2014, 2015, 2016, 2017 The University of Utah
 // All rights reserved.
 //
 // This file is part of `csmith', a random generator of C programs.
@@ -26,6 +26,10 @@
 // CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
+
+#if HAVE_CONFIG_H
+#  include <config.h>
+#endif
 
 #include "StatementFor.h"
 #include <cassert>
@@ -83,9 +87,21 @@ make_random_loop_control(int &init, int &limit, int &incr,
 		ERROR_RETURN();
 		// Do `+=' or `-=' by an increment between 0 and 9 inclusive.
 		// make sure the limit can be reached without wrap-around
-		incr_op = (limit >= init) ? eAddAssign : eSubAssign;
 		incr = pure_rnd_upto(10);
-		if (incr == 0) incr = 1;
+    // avoid an infinite loop due to inexact division, e.g,
+    // init = 0, limit = 3, step = 2, test_op = eCmpNe
+    if (test_op == eCmpNe && incr > 1)
+      limit = (limit - init) / incr * incr + init;
+    incr_op = (limit >= init) ? eAddAssign : eSubAssign;
+    if (incr == 0) incr = 1;
+
+    // A rare case that could cause wrap around: distance between init
+    // and limit is multiple of incr, and the incr goes to wrong direction.
+    // For example: init = 8, limit = 1, incr = -7. test_op is >=
+    if (CGOptions::fast_execution() && (limit - init) % incr == 0 && 
+      (test_op == eCmpGe || test_op == eCmpLe)) {
+      limit = (incr_op == eAddAssign) ? limit + 1 : limit - 1;
+    }
 	} else {
 		ERROR_RETURN();
 		// Do `++' or `--', pre- or post-.
@@ -96,11 +112,14 @@ make_random_loop_control(int &init, int &limit, int &incr,
 			incr_op = pure_rnd_flipcoin(50) ? ePreIncr : ePostIncr;
 		}
 		if (((incr_op == ePreIncr) && !CGOptions::pre_incr_operator())
-			|| ((incr_op == ePostIncr) && !CGOptions::post_incr_operator())
-			|| ((incr_op == ePreDecr) && !CGOptions::pre_decr_operator())
+			|| ((incr_op == ePostIncr) && !CGOptions::post_incr_operator())) {
+
+			incr_op = eAddAssign;
+		}
+		if (((incr_op == ePreDecr) && !CGOptions::pre_decr_operator())
 			|| ((incr_op == ePostDecr) && !CGOptions::post_decr_operator())) {
 
-			incr_op = (limit >= init) ? eAddAssign : eSubAssign;
+			incr_op = eSubAssign;
 		}
 		incr = 1;
 	}
@@ -160,14 +179,15 @@ StatementFor::make_iteration(CGContext& cg_context, StatementAssign*& init, Expr
 		}
 	} while (true);
 
-	assert(cg_context.read_indices(var, fm->global_facts));
+	bool read = cg_context.read_indices(var, fm->global_facts);
+	assert(read);
 	cg_context.write_var(var);
 	cg_context.read_var(var);
 
 	// Select the loop parameters: init, limit, increment, etc.
-	int        init_n, limit_n, incr_n;
+	int        init_n=0, limit_n=0, incr_n=0;
 	eBinaryOps test_op;
-	eAssignOps incr_op;
+	eAssignOps incr_op = eAddAssign;
 	bound = INVALID_BOUND;
 
 	// choose a random array from must use variables, and find the dimension with shortest length
@@ -207,7 +227,8 @@ StatementFor::make_iteration(CGContext& cg_context, StatementAssign*& init, Expr
 
 	init = new StatementAssign(cg_context.get_current_block(), *lhs, *c_init, eSimpleAssign, flags1);
 	ERROR_GUARD_AND_DEL3(NULL, c_init, lhs, flags1);
-	assert(init->visit_facts(fm->global_facts, cg_context));
+	bool visited = init->visit_facts(fm->global_facts, cg_context);
+	assert(visited);
 
 	assert(var);
 	ExpressionVariable *v = new ExpressionVariable(*var);

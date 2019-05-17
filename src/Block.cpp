@@ -1,6 +1,6 @@
 // -*- mode: C++ -*-
 //
-// Copyright (c) 2007, 2008, 2010, 2011, 2013 The University of Utah
+// Copyright (c) 2007, 2008, 2010, 2011, 2013, 2015, 2016, 2017 The University of Utah
 // All rights reserved.
 //
 // This file is part of `csmith', a random generator of C programs.
@@ -35,6 +35,11 @@
 // Bryan Turner (bryan.turner@pobox.com)
 // July, 2005
 //
+
+#if HAVE_CONFIG_H
+#  include <config.h>
+#endif
+
 #ifdef WIN32
 #pragma warning(disable : 4786)   /* Disable annoying warning messages */
 #endif
@@ -335,7 +340,9 @@ Block*
 Block::random_parent_block(void)
 {
 	vector<Block*> blks;
-	blks.push_back(NULL);
+	if (CGOptions::global_variables()) {
+		blks.push_back(NULL);
+	}
 	Block* tmp = this;
 	while (tmp) {
 		blks.push_back(tmp);
@@ -426,7 +433,8 @@ Block::append_return_stmt(CGContext& cg_context)
 	ERROR_GUARD(NULL);
 	stms.push_back(sr);
 	fm->makeup_new_var_facts(pre_facts, fm->global_facts);
-	assert(sr->visit_facts(fm->global_facts, cg_context));
+	bool visited = sr->visit_facts(fm->global_facts, cg_context);
+	assert(visited);
 
 	fm->set_fact_in(sr, pre_facts);
 	fm->set_fact_out(sr, fm->global_facts);

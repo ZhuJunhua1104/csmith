@@ -1,6 +1,6 @@
 // -*- mode: C++ -*-
 //
-// Copyright (c) 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 The University of Utah
+// Copyright (c) 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017 The University of Utah
 // All rights reserved.
 //
 // This file is part of `csmith', a random generator of C programs.
@@ -26,6 +26,10 @@
 // CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
+
+#if HAVE_CONFIG_H
+#  include <config.h>
+#endif
 
 #ifdef WIN32
 #pragma warning(disable : 4786)   /* Disable annoying warning messages */
@@ -116,10 +120,17 @@ VariableSelector::InitScopeTable()
 {
 	if (scopeTable_ == NULL) {
 		scopeTable_ = new ProbabilityTable<unsigned int, eVariableScope>();
-		scopeTable_->add_elem(35, eGlobal);
-		scopeTable_->add_elem(65, eParentLocal);
-		scopeTable_->add_elem(95, eParentParam);
-		scopeTable_->add_elem(100, eNewValue);
+		if (CGOptions::global_variables()) {
+			scopeTable_->add_elem(35, eGlobal);
+			scopeTable_->add_elem(65, eParentLocal);
+			scopeTable_->add_elem(95, eParentParam);
+			scopeTable_->add_elem(100, eNewValue);
+		}
+		else {
+			scopeTable_->add_elem(50, eParentLocal);
+			scopeTable_->add_elem(95, eParentParam);
+			scopeTable_->add_elem(100, eNewValue);
+		}
 	}
 }
 
@@ -128,6 +139,7 @@ VariableSelector::InitScopeTable()
 static string
 RandomGlobalName(void)
 {
+	assert(CGOptions::global_variables() && "no global variables!");
 	return gensym("g_");
 }
 
@@ -847,7 +859,7 @@ VariableSelector::make_init_value(Effect::Access access, const CGContext &cg_con
 		CVQualifiers qfer_deref = qfer.random_loose_qualifiers(no_volatile, access, cg_context);
 		qfer_deref.remove_qualifiers(1);
 		qfer_deref.accept_stricter = false;
-		bool use_local = (b != 0 && type->eType == ePointer && !qfer_deref.is_volatile());
+		bool use_local = (!CGOptions::global_variables() || (b != 0 && type->eType == ePointer && !qfer_deref.is_volatile()));
 		const Type* tt = use_local ? Type::random_type_from_type(type, true, true) : Type::random_type_from_type(type, false, true);
 		ERROR_GUARD(NULL);
 		// create a local if it's not a volatile, and it's a pointer, and block is specified
@@ -1034,7 +1046,7 @@ VariableSelectionProbability(eVariableScope upper = MAX_VAR_SCOPE, Filter *filte
 static eVariableScope
 VariableCreationProbability(void)
 {
-	bool flag = rnd_flipcoin(10);
+	bool flag = CGOptions::global_variables() && rnd_flipcoin(10);
 	ERROR_GUARD(MAX_VAR_SCOPE);
 	if (flag)		// 10% chance to create new global var
 		return eGlobal;
@@ -1142,7 +1154,13 @@ VariableSelector::SelectLoopCtrlVar(const CGContext &cg_context, const vector<co
 	Variable* var = choose_var(vars, Effect::WRITE, cg_context, type, 0, eConvert, invalid_vars, true);
 	ERROR_GUARD(NULL);
 	if (var == NULL) {
-		var = GenerateNewGlobal(Effect::WRITE, cg_context, type, 0);
+		if (CGOptions::global_variables()) {
+			var = GenerateNewGlobal(Effect::WRITE, cg_context, type, 0);
+		}
+		else {
+			var = GenerateNewParentLocal(*cg_context.get_current_block(),
+					Effect::WRITE, cg_context, type, 0);
+		}
 	}
 	return var;
 }
@@ -1230,15 +1248,18 @@ VariableSelector::select_deref_pointer(Effect::Access access, const CGContext &c
 	vars.insert(vars.end(), f->param.begin(), f->param.end());
 
 	Variable* var = choose_var(vars, access, cg_context, type, qfer, eDereference, invalid_vars);
-	ERROR_GUARD(NULL);
 	if (var == 0) {
-		Type* ptr_type = Type::find_pointer_type(type, true);
-		ERROR_GUARD(NULL);
-		assert(ptr_type);
-		CVQualifiers ptr_qfer = (!qfer || qfer->wildcard)
-								? CVQualifiers::random_qualifiers(ptr_type, access, cg_context, true)
-			                    //: qfer->indirect_qualifiers(-1);
-								: qfer->random_add_qualifiers(!cg_context.get_effect_context().is_side_effect_free());
+		Type* ptr_type = 0;
+		if (type->get_indirect_level() < CGOptions::max_indirect_level()) {
+			ptr_type = Type::find_pointer_type(type, true);
+		}
+		if (!ptr_type) {
+			return 0;
+		}
+		CVQualifiers ptr_qfer = (!qfer || qfer->wildcard || !CGOptions::global_variables())
+			? CVQualifiers::random_qualifiers(ptr_type, access, cg_context, true)
+		        //: qfer->indirect_qualifiers(-1);
+			: qfer->random_add_qualifiers(!cg_context.get_effect_context().is_side_effect_free());
 		ERROR_GUARD(NULL);
 		ptr_qfer.accept_stricter = false;
 		if (access == Effect::WRITE) {
@@ -1297,7 +1318,7 @@ VariableSelector::create_array_and_itemize(Block* blk, string name, const CGCont
 ArrayVariable*
 VariableSelector::create_random_array(const CGContext& cg_context)
 {
-	bool as_global = rnd_flipcoin(25);
+	bool as_global = CGOptions::global_variables() && rnd_flipcoin(25);
 	ERROR_GUARD(NULL);
 	string name;
 	Block* blk = 0;

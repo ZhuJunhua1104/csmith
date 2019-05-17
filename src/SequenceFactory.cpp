@@ -1,6 +1,6 @@
 // -*- mode: C++ -*-
 //
-// Copyright (c) 2007, 2008, 2009, 2010, 2011 The University of Utah
+// Copyright (c) 2007, 2008, 2009, 2010, 2011, 2017 The University of Utah
 // All rights reserved.
 //
 // This file is part of `csmith', a random generator of C programs.
@@ -27,14 +27,16 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 
+#if HAVE_CONFIG_H
+#  include <config.h>
+#endif
+
 #include "SequenceFactory.h"
 
 #include <cassert>
 #include <iostream>
 #include <string>
 #include "LinearSequence.h"
-#include "SimpleDeltaSequence.h"
-#include "DeltaMonitor.h"
 
 std::set<Sequence*> SequenceFactory::seqs_;
 
@@ -44,15 +46,8 @@ Sequence*
 SequenceFactory::make_sequence()
 {
 	Sequence *seq = NULL;
-
-	if (DeltaMonitor::is_running()) {
-		seq = DeltaMonitor::GetSequence();
-		current_sep_char_ = DeltaMonitor::GetSepChar();
-	}
-	else {
-		seq = new LinearSequence(LinearSequence::default_sep_char);
-		current_sep_char_ = LinearSequence::default_sep_char;
-	}
+	seq = new LinearSequence(LinearSequence::default_sep_char);
+	current_sep_char_ = LinearSequence::default_sep_char;
 
 	assert(seq);
 	seqs_.insert(seq);

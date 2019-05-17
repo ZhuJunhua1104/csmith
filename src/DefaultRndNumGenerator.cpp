@@ -1,6 +1,6 @@
 // -*- mode: C++ -*-
 //
-// Copyright (c) 2007, 2008, 2010, 2011 The University of Utah
+// Copyright (c) 2007, 2008, 2010, 2011, 2015, 2017 The University of Utah
 // All rights reserved.
 //
 // This file is part of `csmith', a random generator of C programs.
@@ -27,6 +27,10 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 
+#if HAVE_CONFIG_H
+#  include <config.h>
+#endif
+
 #include "DefaultRndNumGenerator.h"
 
 #include <cassert>
@@ -39,14 +43,6 @@
 #include "SequenceFactory.h"
 #include "Sequence.h"
 #include "CGOptions.h"
-#include "DeltaMonitor.h"
-
-#ifdef WIN32
-extern "C" {
-	extern void srand48(long seed);
-	extern long lrand48(void);
-}
-#endif
 
 DefaultRndNumGenerator *DefaultRndNumGenerator::impl_ = 0;
 
@@ -107,8 +103,6 @@ DefaultRndNumGenerator::get_prefixed_name(const std::string &name)
 void
 DefaultRndNumGenerator::add_number(int v, int bound, int k)
 {
-	if (DeltaMonitor::is_running())
-		seq_->add_number(v, bound, k);
 }
 
 /*
@@ -176,14 +170,6 @@ DefaultRndNumGenerator::rnd_flipcoin(const unsigned int p, const Filter *f, cons
 	}
 	return rv;
 }
-
-#if 0
-void
-DefaultRndNumGenerator::seedrand( unsigned long seed )
-{
-	srand48 (seed);
-}
-#endif
 
 std::string &
 DefaultRndNumGenerator::trace_depth()

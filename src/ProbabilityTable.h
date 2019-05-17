@@ -1,6 +1,6 @@
 // -*- mode: C++ -*-
 //
-// Copyright (c) 2007, 2008, 2009, 2010, 2011 The University of Utah
+// Copyright (c) 2007, 2008, 2009, 2010, 2011, 2015 The University of Utah
 // All rights reserved.
 //
 // This file is part of `csmith', a random generator of C programs.
@@ -33,7 +33,7 @@
 #include <vector>
 #include <algorithm>
 #include <functional>
-#include <assert.h>
+#include <cassert>
 #include "Probabilities.h"
 #include "VectorFilter.h"
 #include "CGOptions.h"

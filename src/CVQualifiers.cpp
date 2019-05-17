@@ -1,6 +1,6 @@
 // -*- mode: C++ -*-
 //
-// Copyright (c) 2007, 2008, 2009, 2010, 2011, 2013 The University of Utah
+// Copyright (c) 2007, 2008, 2009, 2010, 2011, 2013, 2015, 2016, 2017 The University of Utah
 // All rights reserved.
 //
 // This file is part of `csmith', a random generator of C programs.
@@ -27,7 +27,11 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 
-#include <assert.h>
+#if HAVE_CONFIG_H
+#  include <config.h>
+#endif
+
+#include <cassert>
 #include <iostream>
 #include "CVQualifiers.h"
 #include "Type.h"
@@ -187,7 +191,7 @@ CVQualifiers::match_indirect(const CVQualifiers& qfer) const
 void
 CVQualifiers::make_scalar_volatiles(std::vector<bool> &volatiles)
 {
-	if (!CGOptions::volatile_pointers()) {
+	if (!CGOptions::volatile_pointers() || !CGOptions::global_variables()) {
 		for (size_t i=1; i<volatiles.size(); i++)
 			volatiles[i] = false;
 	}
@@ -284,6 +288,28 @@ CVQualifiers::random_qualifiers(const Type* t, Effect::Access access,
 	return random_qualifiers(t, access, cg_context, no_volatile, RegularConstProb, RegularVolatileProb);
 }
 
+static bool is_volatile_ok_on_one_level(const Type* t)
+{
+	if (!CGOptions::lang_cpp()) return true;
+	if (t->eType != eStruct && t->eType != eUnion) return true;
+
+	if (!t->has_assign_ops()) return false;
+	if (t->eType == eStruct) return true;
+
+	// Union with a struct field: we can't make it volatile, or we won't be able to assign to/from that field
+	for (size_t i = 0; i < t->fields.size(); ++i) {
+		const Type* field = t->fields[i];
+
+		if (field->eType == eStruct)
+			return false;
+		if (field->eType == eUnion){
+			if (!is_volatile_ok_on_one_level(field))
+				return false;
+		}
+	}
+	return true;
+}
+
 CVQualifiers
 CVQualifiers::random_qualifiers(const Type* t, Effect::Access access, const CGContext &cg_context, bool no_volatile,
 					unsigned int const_prob, unsigned int volatile_prob)
@@ -298,45 +324,37 @@ CVQualifiers::random_qualifiers(const Type* t, Effect::Access access, const CGCo
 	const Effect &effect_context = cg_context.get_effect_context();
 
 	// set random volatile/const properties for each level of indirection for pointers
+	// First set up the vectors with correct number of qualifiers:
+	unsigned level = 0;
 	const Type* tmp = t->ptr_type;
 	while (tmp) {
-		DEPTH_GUARD_BY_DEPTH_RETURN(2, ret_qfer);
-		isVolatile = rnd_flipcoin(volatile_prob);
-		ERROR_GUARD(ret_qfer);
+		++level;
+		is_consts.push_back(false);
+		is_volatiles.push_back(false);
+		tmp = tmp->ptr_type;
+	}
+	// Then make the random properties (properties need to be in reverse order): 
+	tmp = t->ptr_type;
+	while (tmp) {   
+		bool volatile_ok = is_volatile_ok_on_one_level(tmp);
+		isVolatile = volatile_ok? rnd_flipcoin(volatile_prob): false;
 		isConst = rnd_flipcoin(const_prob);
-		ERROR_GUARD(ret_qfer);
 		if (isVolatile && isConst && !CGOptions::allow_const_volatile()) {
 			isConst = false;
 		}
-		is_consts.push_back(isConst);
-		is_volatiles.push_back(isVolatile);
+		assert(level > 0);
+		is_consts[level-1] = isConst;
+		is_volatiles[level-1] = isVolatile;
+		--level;
 		tmp = tmp->ptr_type;
 	}
+
 	// set random volatile/const properties for variable itself
-	bool volatile_ok = effect_context.is_side_effect_free();
+	bool volatile_ok = effect_context.is_side_effect_free() && is_volatile_ok_on_one_level(t);
 	bool const_ok = (access != Effect::WRITE);
 
-	isVolatile = false;
-	isConst = false;
-
-	if (volatile_ok && const_ok) {
-		DEPTH_GUARD_BY_DEPTH_RETURN(2, ret_qfer);
-		isVolatile = rnd_flipcoin(volatile_prob);
-		ERROR_GUARD(ret_qfer);
-		isConst = rnd_flipcoin(const_prob);
-		ERROR_GUARD(ret_qfer);
-	}
-	else if (volatile_ok) {
-		DEPTH_GUARD_BY_DEPTH_RETURN(1, ret_qfer);
-		isVolatile = rnd_flipcoin(volatile_prob);
-		ERROR_GUARD(ret_qfer);
-	}
-	else if (const_ok) {
-		DEPTH_GUARD_BY_DEPTH_RETURN(1, ret_qfer);
-		isConst = rnd_flipcoin(const_prob);
-		ERROR_GUARD(ret_qfer);
-	}
-
+	isVolatile = volatile_ok ? rnd_flipcoin(volatile_prob) : false;
+	isConst = const_ok ? rnd_flipcoin(const_prob) : false;
 	if (isVolatile && isConst && !CGOptions::allow_const_volatile()) {
 		isConst = false;
 	}
@@ -588,36 +606,6 @@ CVQualifiers::output_qualified_type(const Type* t, std::ostream &out) const
 	}
 }
 
-void
-CVQualifiers::output_qualified_type_with_deputy_annotation(const Type* t, std::ostream &out, const vector<string>& annotations) const
-{
-	assert(t);
-	assert(sanity_check(t));
-	assert(is_consts.size() == annotations.size()+1);
-	size_t i;
-	const Type* base = t->get_base_type();
-	for (i=0; i<is_consts.size(); i++) {
-		if (i>0) {
-			out << "* ";
-			out << annotations[i-1] << " ";
-		}
-		if (is_consts[i]) {
-			if (!CGOptions::consts())
-				assert(0);
-			out << "const ";
-		}
-		if (is_volatiles[i]) {
-			if (!CGOptions::volatiles())
-				assert(0);
-			out << "volatile ";
-		}
-		if (i==0) {
-			base->Output(out);
-			out << " ";
-		}
-	}
-}
-
 bool
 CVQualifiers::is_const_after_deref(int deref_level) const
 {
@@ -688,8 +676,8 @@ CVQualifiers::get_all_qualifiers(vector<CVQualifiers> &quals, unsigned int const
 	qual_enumerator.add_bool_elem("volatile_prob", volatile_prob);
 	Enumerator<string> *i;
 	for (i = qual_enumerator.begin(); i != qual_enumerator.end(); i = i->next()) {
-		bool isConst = i->get_elem("const_prob");
-		bool isVolatile = i->get_elem("volatile_prob");
+		bool isConst = i->get_elem("const_prob") != 0;
+		bool isVolatile = i->get_elem("volatile_prob") != 0;
 
 		vector<bool> consts;
 		vector<bool> volatiles;

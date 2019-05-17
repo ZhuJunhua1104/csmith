@@ -1,6 +1,6 @@
 // -*- mode: C++ -*-
 //
-// Copyright (c) 2007, 2008, 2009, 2010, 2011 The University of Utah
+// Copyright (c) 2007, 2008, 2009, 2010, 2011, 2015 The University of Utah
 // All rights reserved.
 //
 // This file is part of `csmith', a random generator of C programs.
@@ -148,8 +148,7 @@ Enumerator<Name>::~Enumerator()
 {
 	typename map<Name, EnumObject*>::iterator i;
 	for (i = objs_.begin(); i != objs_.end(); ++i) {
-		if ((*i).second != NULL)
-			delete (*i).second;
+		delete i->second;
 	}
 	objs_.clear();
 }
@@ -180,24 +179,20 @@ template <class Name>
 void
 Enumerator<Name>::add_elem(Name name, int bound)
 {
-	typename map<Name, EnumObject*>::iterator i = objs_.find(name);
-	assert(i == objs_.end());
+	assert(objs_.find(name) == objs_.end());
 
-	EnumObject *obj = new EnumObject(bound, false, false);
-	objs_[name] = obj;
+	objs_[name] = new EnumObject(bound, false, false);
 }
 
 template <class Name>
 void
 Enumerator<Name>::add_bool_elem_of_bool(Name name, bool value)
 {
-	typename map<Name, EnumObject*>::iterator i = objs_.find(name);
-	assert(i == objs_.end());
+	assert(objs_.find(name) == objs_.end());
 
 	int bound = value ? 2 : 1;
 
-	EnumObject *obj = new EnumObject(bound, true, false);
-	objs_[name] = obj;
+	objs_[name] = new EnumObject(bound, true, false);
 }
 
 template<class Name>
@@ -218,19 +213,16 @@ Enumerator<Name>::add_bool_elem(Name name, int value)
 		bound = 2;
 	}
 
-	typename map<Name, EnumObject*>::iterator i = objs_.find(name);
-	assert(i == objs_.end());
+	assert(objs_.find(name) == objs_.end());
 
-	EnumObject *obj = new EnumObject(bound, true, bool_value);
-	objs_[name] = obj;
+	objs_[name] = new EnumObject(bound, true, bool_value);
 }
 
 template <class Name>
 int
 Enumerator<Name>::get_elem(Name name)
 {
-	typename map<Name, EnumObject*>::iterator i = objs_.find(name);
-	assert(i != objs_.end());
+	assert(objs_.find(name) != objs_.end());
 
 	EnumObject *obj = objs_[name];
 	assert(obj);
@@ -298,8 +290,7 @@ template <class Name>
 bool
 Enumerator<Name>::is_changed(Name name)
 {
-	typename map<Name, EnumObject*>::iterator i = objs_.find(name);
-	assert(i != objs_.end());
+	assert(objs_.find(name) != objs_.end());
 
 	EnumObject *obj = objs_[name];
 	assert(obj);

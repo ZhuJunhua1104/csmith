@@ -1,6 +1,6 @@
 // -*- mode: C++ -*-
 //
-// Copyright (c) 2007, 2008, 2010, 2011 The University of Utah
+// Copyright (c) 2007, 2008, 2010, 2011, 2015 The University of Utah
 // All rights reserved.
 //
 // This file is part of `csmith', a random generator of C programs.
@@ -35,7 +35,8 @@
 #include <string>
 #include <vector>
 #include <ostream>
-#define intvec std::vector<int>
+
+typedef std::vector<int> intvec;
 
 std::string gensym(const char *basename);
 std::string gensym(const std::string &basename);

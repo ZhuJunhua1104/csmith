@@ -1,6 +1,6 @@
 // -*- mode: C++ -*-
 //
-// Copyright (c) 2007, 2008, 2009, 2010, 2011 The University of Utah
+// Copyright (c) 2007, 2008, 2009, 2010, 2011, 2015, 2017 The University of Utah
 // All rights reserved.
 //
 // This file is part of `csmith', a random generator of C programs.
@@ -27,6 +27,10 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 
+#if HAVE_CONFIG_H
+#  include <config.h>
+#endif
+
 #include "FactUnion.h"
 #include <iostream>
 #include "CGOptions.h"
@@ -41,7 +45,7 @@
 #include "FunctionInvocationUser.h"
 #include "ExpressionAssign.h"
 #include "ExpressionComma.h"
-#include <assert.h>
+#include <cassert>
 
 const int  FactUnion::TOP = -2;
 const int  FactUnion::BOTTOM = -1;

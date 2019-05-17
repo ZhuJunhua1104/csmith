@@ -1,6 +1,6 @@
 ## -*- mode: Makefile-Automake -*-
 ##
-## Copyright (c) 2010, 2011, 2012 The University of Utah
+## Copyright (c) 2010, 2011, 2012, 2015, 2017, 2018 The University of Utah
 ## All rights reserved.
 ##
 ## This file is part of `csmith', a random generator of C programs.
@@ -29,6 +29,8 @@
 
 ###############################################################################
 
+.DELETE_ON_ERROR:
+
 lib_LIBRARIES = libcsmith.a
 libcsmith_a_SOURCES = \
 	volatile_runtime.c
@@ -42,17 +44,7 @@ lib_LTLIBRARIES = libcsmith.la
 libcsmith_la_SOURCES = \
 	$(libcsmith_a_SOURCES)
 
-GIT_HASH := $(shell "$(top_srcdir)/git-hash.sh" "$(top_srcdir)" || echo error)
-GIT_FLAG = -DGIT_VERSION=\"$(GIT_HASH)\"
-
-## ENE: The idea of stuffing the target CPU name (a string) into a CPP symbol
-## is kind of awful.  What we should do instead is use the name to modify the
-## include path, e.g., -I"$(target_cpu)".  But that refactoring is for a later
-## day...
-
-libcsmith_a_CPPFLAGS = \
-	-DTARGET_CPU_$(target_cpu)=1 \
-	$(GIT_FLAG)
+libcsmith_a_CPPFLAGS =
 libcsmith_la_CPPFLAGS = \
 	$(libcsmith_a_CPPFLAGS)
 
@@ -102,12 +94,23 @@ safe_math_macros.h: safe_math_macros.m4
 safe_math_macros_notmp.h: safe_math_macros_notmp.m4
 	$(M4) < $< > $@
 
-# We distribute, but do not build, the following Windows support files.
+# The `all-local' and `clean-local' rules are for the convenience of people who
+# want to compile Csmith-generated programs against a Csmith build tree.
+#
+all-local:
+	$(install_sh) -d windows
+	for f in $(nobase_libcsmith_a_include_HEADERS); do \
+	  test -e "$$f" || ln -s "$(srcdir)/$$f" "$$f"; \
+	done
+
+clean-local:
+	for f in $(nobase_libcsmith_a_include_HEADERS); do \
+	  test \! -L "$$f" || rm -f "$$f"; \
+	done
+	-rmdir windows
+
 EXTRA_DIST = \
-	windows/_rand48.c \
-	windows/lrand48.c \
-	windows/rand48.h \
-	windows/srand48.c
+	CMakeLists.txt
 
 ###############################################################################
 

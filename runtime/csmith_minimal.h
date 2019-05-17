@@ -1,6 +1,6 @@
 /* -*- mode: C -*-
  *
- * Copyright (c) 2007-2011, 2013, 2014 The University of Utah
+ * Copyright (c) 2007-2011, 2013, 2014, 2015 The University of Utah
  * All rights reserved.
  *
  * This file is part of `csmith', a random generator of C programs.
@@ -52,7 +52,15 @@ extern int printf (const char *, ...);
 // FIXME
 #define assert(x)
 
+#if defined (USE_MATH_MACROS_NOTMP)
+#include "safe_math_macros_notmp.h"
+#elif defined (USE_MATH_MACROS)
+#include "safe_math_macros.h"
+#else
+#define FUNC_NAME(x) (safe_##x)
 #include "safe_math.h"
+#undef FUNC_NAME
+#endif
 
 static inline void platform_main_begin(void)
 {

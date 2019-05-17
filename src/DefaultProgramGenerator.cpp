@@ -1,6 +1,6 @@
 // -*- mode: C++ -*-
 //
-// Copyright (c) 2007, 2008, 2009, 2010, 2011 The University of Utah
+// Copyright (c) 2007, 2008, 2009, 2010, 2011, 2017 The University of Utah
 // All rights reserved.
 //
 // This file is part of `csmith', a random generator of C programs.
@@ -27,17 +27,19 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 
+#if HAVE_CONFIG_H
+#  include <config.h>
+#endif
+
 #include "DefaultProgramGenerator.h"
 #include <cassert>
 #include <sstream>
 #include "RandomNumber.h"
 #include "AbsRndNumGenerator.h"
 #include "DefaultOutputMgr.h"
-#include "ReducerOutputMgr.h"
 #include "Finalization.h"
 #include "Function.h"
 #include "Type.h"
-#include "DeltaMonitor.h"
 #include "CGOptions.h"
 #include "SafeOpFlags.h"
 #include "ExtensionMgr.h"
@@ -60,17 +62,8 @@ DefaultProgramGenerator::~DefaultProgramGenerator()
 void
 DefaultProgramGenerator::initialize()
 {
-	if (DeltaMonitor::is_delta()) {
-		DeltaMonitor::CreateRndNumInstance(seed_);
-	}
-	else {
-		RandomNumber::CreateInstance(rDefaultRndNumGenerator, seed_);
-	}
-	if (CGOptions::get_reducer()) {
-		output_mgr_ = new ReducerOutputMgr();
-	} else {
-		output_mgr_ = DefaultOutputMgr::CreateInstance();
-	}
+	RandomNumber::CreateInstance(rDefaultRndNumGenerator, seed_);
+	output_mgr_ = DefaultOutputMgr::CreateInstance();
 	assert(output_mgr_);
 
 	ExtensionMgr::CreateExtension();

@@ -1,6 +1,6 @@
 // -*- mode: C++ -*-
 //
-// Copyright (c) 2007, 2008, 2010, 2011, 2013 The University of Utah
+// Copyright (c) 2007, 2008, 2010, 2011, 2013, 2015, 2017 The University of Utah
 // All rights reserved.
 //
 // This file is part of `csmith', a random generator of C programs.
@@ -27,6 +27,10 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 
+#if HAVE_CONFIG_H
+#  include <config.h>
+#endif
+
 #include "ExpressionFuncall.h"
 #include <cassert>
 
@@ -43,7 +47,6 @@
 #include "Error.h"
 #include "Bookkeeper.h"
 #include "StringUtils.h"
-#include "Reducer.h"
 #include "Block.h"
 #include "random.h"
 
@@ -55,7 +58,7 @@
 static bool
 ExpressionFunctionProbability(const CGContext &/*cg_context*/)
 {
-	if (Function::reach_max_functions_cnt()) {
+	if (Function::reach_max_functions_cnt() && !CGOptions::builtins()) {
 		return true;
 	}
 	return rnd_flipcoin(80);
@@ -242,10 +245,6 @@ void
 ExpressionFuncall::Output(std::ostream &out) const
 {
 	output_cast(out);
-	Reducer* reducer = CGOptions::get_reducer();
-	if (reducer && reducer->output_expr(this, out)) {
-		return;
-	}
 	invoke.Output(out);
 }
 

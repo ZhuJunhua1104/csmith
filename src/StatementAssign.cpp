@@ -1,6 +1,6 @@
 // -*- mode: C++ -*-
 //
-// Copyright (c) 2007, 2008, 2010, 2011, 2013, 2014 The University of Utah
+// Copyright (c) 2007, 2008, 2010, 2011, 2013, 2014, 2015, 2017 The University of Utah
 // All rights reserved.
 //
 // This file is part of `csmith', a random generator of C programs.
@@ -26,6 +26,10 @@
 // CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
+
+#if HAVE_CONFIG_H
+#  include <config.h>
+#endif
 
 #include "StatementAssign.h"
 #include <cassert>
@@ -186,7 +190,12 @@ StatementAssign::make_random(CGContext &cg_context, const Type* type, const CVQu
 
 	bool prev_flag = CGOptions::match_exact_qualifiers(); // keep a copy of previous flag
 	if (qf) CGOptions::match_exact_qualifiers(true);      // force exact qualifier match when selecting vars
-	lhs = Lhs::make_random(lhs_cg_context, type, &qfer, op != eSimpleAssign, need_no_rhs(op));
+	if (CGOptions::strict_float()) {
+		lhs = Lhs::make_random(lhs_cg_context, &e->get_type(), &qfer, op != eSimpleAssign, need_no_rhs(op));
+	}
+	else {
+		lhs = Lhs::make_random(lhs_cg_context, type, &qfer, op != eSimpleAssign, need_no_rhs(op));
+	}
 	if (qf) CGOptions::match_exact_qualifiers(prev_flag); // restore flag
 	ERROR_GUARD_AND_DEL2(NULL, e, lhs);
 

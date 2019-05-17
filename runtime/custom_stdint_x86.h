@@ -1,6 +1,6 @@
 /* -*- mode: C -*-
  *
- * Copyright (c) 2011 The University of Utah
+ * Copyright (c) 2011, 2016 The University of Utah
  * All rights reserved.
  *
  * This file is part of `csmith', a random generator of C programs.
@@ -28,7 +28,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#define int8_t char
+#define int8_t signed char
 #define uint8_t unsigned char
 
 #define int16_t short

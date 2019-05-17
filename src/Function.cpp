@@ -1,6 +1,6 @@
 // -*- mode: C++ -*-
 //
-// Copyright (c) 2007, 2008, 2010, 2011, 2013, 2014 The University of Utah
+// Copyright (c) 2007, 2008, 2010, 2011, 2013, 2014, 2015, 2017 The University of Utah
 // All rights reserved.
 //
 // This file is part of `csmith', a random generator of C programs.
@@ -35,6 +35,11 @@
 // Bryan Turner (bryan.turner@pobox.com)
 // July, 2005
 //
+
+#if HAVE_CONFIG_H
+#  include <config.h>
+#endif
+
 #ifdef WIN32
 #pragma warning(disable : 4786)   /* Disable annoying warning messages */
 #endif
@@ -56,7 +61,6 @@
 #include "util.h"
 #include "Fact.h"
 #include "FactPointTo.h"
-#include "FactMgr.h"
 #include "VectorFilter.h"
 #include "Error.h"
 #include "DepthSpec.h"
@@ -348,7 +352,7 @@ GenerateParameterListFromString(Function &currFunc, const string &params_string)
 		assert((vs[i] != "Void") && "Invalid parameter type!");
 		CVQualifiers qfer;
 		qfer.add_qualifiers(false, false);
-		const Type *ty = Type::get_type_from_string(vs[0]);
+		const Type *ty = Type::get_type_from_string(vs[i]);
 		Variable *v = VariableSelector::GenerateParameterVariable(ty, &qfer);
 		assert(v);
 		currFunc.param.push_back(v);
@@ -870,10 +874,7 @@ OutputFunctions(std::ostream &out)
 int
 Function::deleteFunction(Function* func)
 {
-	if (func) {
-		delete func;
-		func = 0;
-	}
+	delete func;
 	return 0;
 }
 

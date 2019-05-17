@@ -1,6 +1,6 @@
 // -*- mode: C++ -*-
 //
-// Copyright (c) 2007, 2008, 2010, 2011, 2013, 2014 The University of Utah
+// Copyright (c) 2007, 2008, 2010, 2011, 2013, 2014, 2015, 2017 The University of Utah
 // All rights reserved.
 //
 // This file is part of `csmith', a random generator of C programs.
@@ -26,6 +26,10 @@
 // CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
+
+#if HAVE_CONFIG_H
+#  include <config.h>
+#endif
 
 #include "ExpressionVariable.h"
 #include <cassert>
@@ -202,10 +206,6 @@ void
 ExpressionVariable::Output(std::ostream &out) const
 {
 	output_cast(out);
-	Reducer* reducer = CGOptions::get_reducer();
-	if (reducer && reducer->output_expr(this, out)) {
-		return;
-	}
 	int i;
     int indirect_level = get_indirect_level();
     if (indirect_level > 0) {
